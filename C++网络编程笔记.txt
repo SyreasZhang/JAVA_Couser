@@ -1,0 +1,89 @@
+头文件<WinSock2.h>
+
+
+// socket函数族
+
+SOCKET socket(int domain,int type,int protocol);
+创建一个套接字，也就是创建一个网络通讯的句柄的意思
+返回值:socket知识返回你以后再细谈调用中可能用到的socket描述符，或则在错误的时候
+	返回-1。使用WSAGetLastError()可以查看错误原因。
+参数:
+	domain:应该设置成"AF_INET" (互联网通讯)(或者直接写2)
+	type：告诉内核是SOCK_STREAM(TCP)类型还是SOCK_DGRAM（UDP）类型
+	protocol：一般设置为"0"	
+// 代码示例
+// SOCKET sock = socket(AF_INET,SOCK_DGRAM,0);	// 创建一个基于udp的套接字
+
+
+int bind(int sockfd , struct sockaddr *ny_addr,int addrlen)
+返回值:
+	创建成功返回0，创建失败返回-1(SOCKET_ERROR)
+参数:	
+	sockfd:创建的套接字
+	sockaddr *ny_addr:地址信息端口信息
+	addrlen:地址信息的长度sizeof(ny_addr)就可以了
+// 代码示例
+// unsigned short port = 9584;
+// sockaddr_in sa(AF_INET,port);			// 创建一个地址信息结构体
+// int n = bind(sock,(sockaddr*)&sa,sizeof(sa));	// 给套接字绑定端口信息
+
+int sendto(SOCKET s,const char *buf, int len, int flag,const sockaddr *to,int tolen);
+参数:
+	s：套接字
+	buf:要发送的信息，通常是一个字符串
+	len:发送信息的长度
+	flag:填0
+	to:对方的端口信息
+	tolen
+// 代码示例
+// sockaddr_in desti = {AF_INET,PORT};
+// desti.sin_addr.S_un.S_addr = inet_addr("192.168.94.250"); // 将ip地址放入地址中
+// sendto(s, "aaaa", 5, 0, (sockaddr*)&desti, sizeof(desti));
+
+
+
+
+************************************常见问题*********************************************
+1、如何判断套接字是否创建成功
+	由返回值可知，创建成功会返回一个SOCKET对象,未创建
+成功则返回-1，因此只要将返回值与-1相比较则可以知道，是否创建成功。
+	if (INVALID_SOCKET == s) {					
+		cout << "套接字创建失败!" << endl;
+		cout << "错误码" << WSAGetLastError() <<endl;
+		return -1;
+
+	}
+专业写法，INVALID_SOCKET == -1 (~(0)),直接输出并不会输出-1。但是强制转换成int型数据后输
+输出就会输出-1
+
+2、如何判断套接字绑定是否成功
+	同1。
+
+
+*****************************************************************************************
+
+
+----------------------------------------------------------------------------------------
+				容易遇到的bug
+----------------------------------------------------------------------------------------
+1、编译无法通过，链接错误
+	在项目->属性->链接器->输入 中添加 ws2_32.lib
+
+2、套接字创建失败
+	利用得到的错误码 在 工具->错误查找 中输入错误代码则可以知道错误原因
+	错误码(10093):未调用WSAStartup()（只有Windows系统下才用调用，Linux系统下无需调用）
+			调用了ws2_32.lib必须用WSAStartuo初始化
+			WSADATA wd;				// 函数需要的结构体
+			int _n = WSAStartup(0x0202,&wd);	// 0x0202表示版本2.2
+
+3、套接字绑定失败
+	错误码(10047):使用了与请求的协议不兼容的地址。通常是未绑定地址。不推荐使用sockaddr
+			结构体
+	
+4、inet_addr("");函数报错(可能是VS中的编译器认为这个函数不安全)；
+	解决办法1、在"项目"->"属性"->"C/C++"->"常规"中关闭SDL检查
+		2、利用	inet_pton(int net_family,int ip_string,void *in_addr )函数(推荐)
+		// int inet_pton( AF_INET,"192.168.94.250", (void*)&desti.sin_addr);
+		// desti为一个sockaddr_in对象
+		// inet_pton如果地址输入有误，返回0；函数出错返回-1；正确则返回0
+		
